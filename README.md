@@ -38,21 +38,38 @@ The original message header and all fields of surviving detections are preserved
 
 ## Option A: Docker (Recommended for Windows)
 
-Docker pulls the `ros:jazzy` image automatically on first run. Run all commands below from the **repository root**.
+Docker pulls the `ros:jazzy` image automatically on first run.
 
-### Step 1 — Start an interactive container
+### Step 1 — Navigate to the repository root
 
-**Git Bash / MINGW on Windows:**
-```bash
-MSYS_NO_PATHCONV=1 docker run --rm -it \
-  -v "$(pwd):/v2x_thi" \
-  ros:jazzy bash
+The volume mount uses the current directory, so you **must** `cd` into the repo first.
+
+**PowerShell on Windows:**
+```powershell
+cd C:\path\to\V2X_THI
+# Confirm you are in the right place — you should see detection_filter/ and the rosbag folder
+dir
 ```
+
+**Git Bash / Linux / macOS:**
+```bash
+cd /path/to/V2X_THI
+ls    # should show detection_filter/ and rosbag2_2026_03_30-17_51_06/
+```
+
+### Step 2 — Start an interactive container
 
 **PowerShell on Windows:**
 ```powershell
 docker run --rm -it `
   -v "${PWD}:/v2x_thi" `
+  ros:jazzy bash
+```
+
+**Git Bash / MINGW on Windows:**
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm -it \
+  -v "$(pwd):/v2x_thi" \
   ros:jazzy bash
 ```
 
@@ -63,7 +80,17 @@ docker run --rm -it \
   ros:jazzy bash
 ```
 
-### Step 2 — Inside the container: install, build, run
+### Step 3 — Verify the mount (inside the container)
+
+Before doing anything else, confirm the repository files are visible:
+```bash
+ls /v2x_thi
+# Expected output: detection_filter  rosbag2_2026_03_30-17_51_06  README.md  ...
+```
+
+If `/v2x_thi` is **empty**, the volume mount failed. See [Troubleshooting](#troubleshooting) below.
+
+### Step 4 — Inside the container: install, build, run
 
 ```bash
 # Install vision_msgs (mcap storage and colcon are pre-installed in ros:jazzy)
@@ -95,7 +122,7 @@ Expected log line when the node starts:
 [INFO] [detection_filter_node]: Detection Filter Node has been started.
 ```
 
-### Step 3 — Verify the output
+### Step 5 — Verify the output
 
 Every detection printed by `ros2 topic echo` should have `class_id: traffic light`. No `class_id: bed` should appear.
 
@@ -109,6 +136,31 @@ grep -qi "class_id: bed" /tmp/filtered_out.txt \
   || echo "PASS — no bed detections"
 head -60 /tmp/filtered_out.txt
 ```
+
+---
+
+## Troubleshooting
+
+**`/v2x_thi` is empty inside the container**
+
+This means the Docker volume mount did not work. Check the following:
+
+1. **Wrong working directory** — the `docker run` command must be executed from inside the `V2X_THI` folder. Run `pwd` (Linux/macOS/Git Bash) or `$PWD` (PowerShell) before running Docker and confirm the output is the repo root.
+
+2. **Docker Desktop file sharing not enabled** — On Windows, Docker Desktop must be allowed to access the drive:
+   - Open Docker Desktop → Settings → Resources → File Sharing
+   - Add the drive (e.g. `C:\`) or the specific folder and click Apply
+   - Restart Docker Desktop if prompted
+
+3. **Path format** — As a fallback, pass the path explicitly instead of using `$PWD`:
+   ```powershell
+   # PowerShell — use forward slashes
+   docker run --rm -it -v "C:/path/to/V2X_THI:/v2x_thi" ros:jazzy bash
+   ```
+   ```bash
+   # Git Bash
+   MSYS_NO_PATHCONV=1 docker run --rm -it -v "//c/path/to/V2X_THI:/v2x_thi" ros:jazzy bash
+   ```
 
 ---
 
